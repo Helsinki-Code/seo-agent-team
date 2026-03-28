@@ -49,13 +49,14 @@ export function useRealtimeSeoData(initialData: DashboardPayload): UseRealtimeSe
             keywords: [],
             content: [],
             outreach: [],
-            logs: []
+            logs: [],
+            credentialRequests: []
           });
         }
         return;
       }
 
-      const [keywordsResult, contentResult, outreachResult, logsResult] = await Promise.all([
+      const [keywordsResult, contentResult, outreachResult, logsResult, requestsResult] = await Promise.all([
         supabase
           .from("keywords")
           .select("id,campaign_id,keyword,intent,difficulty,rank_position,created_at")
@@ -79,11 +80,20 @@ export function useRealtimeSeoData(initialData: DashboardPayload): UseRealtimeSe
           .select("id,campaign_id,agent_name,state,message,skill_name,created_at")
           .in("campaign_id", campaignIds)
           .order("created_at", { ascending: false })
-          .limit(120)
+          .limit(120),
+        supabase
+          .from("credential_requests")
+          .select("id,user_id,provider,requested_by_agent,reason,status,created_at")
+          .order("created_at", { ascending: false })
+          .limit(40)
       ]);
 
       const firstError =
-        keywordsResult.error ?? contentResult.error ?? outreachResult.error ?? logsResult.error;
+        keywordsResult.error ??
+        contentResult.error ??
+        outreachResult.error ??
+        logsResult.error ??
+        requestsResult.error;
       if (firstError) {
         throw firstError;
       }
@@ -94,7 +104,8 @@ export function useRealtimeSeoData(initialData: DashboardPayload): UseRealtimeSe
           keywords: (keywordsResult.data ?? []) as DashboardPayload["keywords"],
           content: (contentResult.data ?? []) as DashboardPayload["content"],
           outreach: (outreachResult.data ?? []) as DashboardPayload["outreach"],
-          logs: (logsResult.data ?? []) as DashboardPayload["logs"]
+          logs: (logsResult.data ?? []) as DashboardPayload["logs"],
+          credentialRequests: (requestsResult.data ?? []) as DashboardPayload["credentialRequests"]
         });
       }
     } catch (cause) {
@@ -135,6 +146,9 @@ export function useRealtimeSeoData(initialData: DashboardPayload): UseRealtimeSe
           void refreshNow();
         })
         .on("postgres_changes", { event: "*", schema: "public", table: "agent_logs" }, () => {
+          void refreshNow();
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "credential_requests" }, () => {
           void refreshNow();
         })
         .subscribe();

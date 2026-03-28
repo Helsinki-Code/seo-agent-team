@@ -21,11 +21,12 @@ export async function getDashboardDataForUser(userId: string): Promise<Dashboard
       keywords: [],
       content: [],
       outreach: [],
-      logs: []
+      logs: [],
+      credentialRequests: []
     };
   }
 
-  const [keywordsResult, contentResult, outreachResult, logsResult] = await Promise.all([
+  const [keywordsResult, contentResult, outreachResult, logsResult, requestsResult] = await Promise.all([
     supabase
       .from("keywords")
       .select("id,campaign_id,keyword,intent,difficulty,rank_position,created_at")
@@ -49,10 +50,21 @@ export async function getDashboardDataForUser(userId: string): Promise<Dashboard
       .select("id,campaign_id,agent_name,state,message,skill_name,created_at")
       .in("campaign_id", campaignIds)
       .order("created_at", { ascending: false })
-      .limit(120)
+      .limit(120),
+    supabase
+      .from("credential_requests")
+      .select("id,user_id,provider,requested_by_agent,reason,status,created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(40)
   ]);
 
-  const error = keywordsResult.error ?? contentResult.error ?? outreachResult.error ?? logsResult.error;
+  const error =
+    keywordsResult.error ??
+    contentResult.error ??
+    outreachResult.error ??
+    logsResult.error ??
+    requestsResult.error;
   if (error) {
     throw new Error(`Failed to load dashboard data: ${error.message}`);
   }
@@ -62,6 +74,7 @@ export async function getDashboardDataForUser(userId: string): Promise<Dashboard
     keywords: (keywordsResult.data ?? []) as DashboardPayload["keywords"],
     content: (contentResult.data ?? []) as DashboardPayload["content"],
     outreach: (outreachResult.data ?? []) as DashboardPayload["outreach"],
-    logs: (logsResult.data ?? []) as DashboardPayload["logs"]
+    logs: (logsResult.data ?? []) as DashboardPayload["logs"],
+    credentialRequests: (requestsResult.data ?? []) as DashboardPayload["credentialRequests"]
   };
 }

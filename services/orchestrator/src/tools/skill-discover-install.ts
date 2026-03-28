@@ -96,7 +96,8 @@ export class SkillDiscoverAndInstallTool {
           state: "skill_installed",
           message: `Installed skill ${skill.name}`,
           payload: {
-            command: installed.command
+            command: installed.command,
+            requiredProviders: installed.requiredProviders ?? []
           },
           skillName: skill.slug
         });

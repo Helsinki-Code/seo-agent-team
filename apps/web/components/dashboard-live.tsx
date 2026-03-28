@@ -9,6 +9,17 @@ export function DashboardLive({ initialData }: { initialData: DashboardPayload }
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8">
+      {data.credentialRequests.filter((request) => request.status === "pending").length > 0 ? (
+        <section className="rounded-xl border border-amber-300/40 bg-amber-400/10 px-4 py-3 text-sm">
+          <p className="font-semibold text-amber-200">
+            {data.credentialRequests.filter((request) => request.status === "pending").length} credential request(s) need attention
+          </p>
+          <p className="text-amber-100/90">
+            Agents are waiting for provider keys. Open Settings and connect requested providers to resume execution.
+          </p>
+        </section>
+      ) : null}
+
       <section className="grid gap-4 rounded-2xl border border-white/10 bg-[var(--panel)] p-5 md:grid-cols-4">
         <StatCard label="Campaigns" value={String(data.campaigns.length)} />
         <StatCard label="Tracked Keywords" value={String(data.keywords.length)} />

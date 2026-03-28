@@ -6,6 +6,16 @@ import type { AgentProfile, TeamManifest } from "./agent-registry.js";
 import { AnthropicClient, type AgentExecutionOutput } from "./anthropic-client.js";
 import { decryptStoredSecret } from "../security/credential-crypto.js";
 
+class CredentialPendingError extends Error {
+  constructor(
+    readonly provider: string,
+    message: string
+  ) {
+    super(message);
+    this.name = "CredentialPendingError";
+  }
+}
+
 export class CampaignAutopilot {
   private readonly agentMap: Map<string, AgentProfile>;
   private readonly activeCampaigns = new Set<string>();
@@ -171,7 +181,8 @@ export class CampaignAutopilot {
           nextAgentId,
           campaign.id,
           context,
-          anthropicApiKey
+          anthropicApiKey,
+          campaign
         );
       }
 
@@ -196,6 +207,22 @@ export class CampaignAutopilot {
         }
       });
     } catch (error) {
+      if (error instanceof CredentialPendingError) {
+        this.lastCycleAt.set(campaign.id, Date.now());
+        await this.repository.updateCampaignStatus(campaign.id, "running");
+        await this.repository.logSafe({
+          campaignId: campaign.id,
+          agentName: "Shiva",
+          level: "warn",
+          state: "waiting_for_credentials",
+          message: error.message,
+          payload: {
+            provider: error.provider
+          }
+        });
+        return;
+      }
+
       await this.repository.logSafe({
         campaignId: campaign.id,
         agentName: "Shiva",
@@ -213,7 +240,8 @@ export class CampaignAutopilot {
     nextAgentId: string | undefined,
     campaignId: string,
     context: CampaignContext,
-    anthropicApiKey: string
+    anthropicApiKey: string,
+    campaign: CampaignRecord
   ): Promise<void> {
     const skillRequirement = this.buildSkillRequirement(agent, context);
     const installed = await this.skillTool.execute({
@@ -221,6 +249,13 @@ export class CampaignAutopilot {
       agentName: agent.name,
       campaignId
     });
+
+    await this.ensureDiscoveredProviderKeys(
+      campaign,
+      agent.name,
+      installed.requiredProviders ?? [],
+      campaignId
+    );
 
     await this.repository.logSafe({
       campaignId,
@@ -304,7 +339,11 @@ export class CampaignAutopilot {
           );
         }
 
-        return decryptStoredSecret(integration.encryptedSecret, this.config.CREDENTIAL_ENCRYPTION_KEY);
+        const decrypted = decryptStoredSecret(integration.encryptedSecret, this.config.CREDENTIAL_ENCRYPTION_KEY);
+        const extracted = this.extractPrimarySecretValue(args.provider, decrypted);
+        if (extracted) {
+          return extracted;
+        }
       }
 
       await this.repository.ensureCredentialRequest({
@@ -333,8 +372,77 @@ export class CampaignAutopilot {
     if (args.provider === "anthropic" && this.config.ANTHROPIC_API_KEY) {
       return this.config.ANTHROPIC_API_KEY;
     }
+    if (args.provider === "telegram_bot" && this.config.TELEGRAM_BOT_TOKEN) {
+      return this.config.TELEGRAM_BOT_TOKEN;
+    }
 
-    throw new Error(`No ${args.provider} key available for campaign ${args.campaign.id}.`);
+    throw new CredentialPendingError(
+      args.provider,
+      `No ${args.provider} key available for campaign ${args.campaign.id}.`
+    );
+  }
+
+  private extractPrimarySecretValue(provider: string, rawDecrypted: string): string | null {
+    const keyByProvider: Record<string, string[]> = {
+      anthropic: ["api_key", "key", "token"],
+      telegram_bot: ["bot_token", "token"],
+      wordpress: ["app_password", "password"],
+      webflow: ["api_token", "token"],
+      gsc: ["service_account_json", "json"],
+      custom: ["secret_json", "api_key", "token", "secret"]
+    };
+
+    const preferredKeys = keyByProvider[provider] ?? ["api_key", "token", "secret"];
+
+    try {
+      const parsed = JSON.parse(rawDecrypted) as Record<string, unknown>;
+      for (const key of preferredKeys) {
+        const value = parsed[key];
+        if (typeof value === "string" && value.trim().length > 0) {
+          return value.trim();
+        }
+      }
+
+      const firstString = Object.values(parsed).find(
+        (entry): entry is string => typeof entry === "string" && entry.trim().length > 0
+      );
+      return firstString?.trim() ?? null;
+    } catch {
+      return rawDecrypted.trim().length > 0 ? rawDecrypted.trim() : null;
+    }
+  }
+
+  private async ensureDiscoveredProviderKeys(
+    campaign: CampaignRecord,
+    agentName: string,
+    requiredProviders: string[],
+    campaignId: string
+  ): Promise<void> {
+    const providers = [...new Set(requiredProviders.filter((provider) => provider !== "anthropic"))];
+    for (const provider of providers) {
+      try {
+        await this.resolveProviderSecret({
+          campaign,
+          provider,
+          requestedByAgent: agentName,
+          reason: `The discovered skill requires ${provider} credentials before execution can continue.`
+        });
+      } catch (error) {
+        if (error instanceof CredentialPendingError) {
+          await this.repository.logSafe({
+            campaignId,
+            agentName,
+            level: "warn",
+            state: "provider_key_missing",
+            message: error.message,
+            payload: {
+              provider
+            }
+          });
+        }
+        throw error;
+      }
+    }
   }
 
   private buildSkillRequirement(agent: AgentProfile, context: CampaignContext): string {

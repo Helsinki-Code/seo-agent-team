@@ -45,6 +45,7 @@ export type InstalledSkill = {
   command: string;
   stdout: string;
   stderr: string;
+  requiredProviders?: string[];
 };
 
 export type CampaignContext = {

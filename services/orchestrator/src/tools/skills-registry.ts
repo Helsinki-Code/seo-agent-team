@@ -162,6 +162,37 @@ function parseCandidatesFromText(output: string): SkillCandidate[] {
   return [...deduped.values()];
 }
 
+function deriveRequiredProviders(skill: SkillCandidate): string[] {
+  const text = `${skill.slug} ${skill.name} ${skill.description}`.toLowerCase();
+  const providers = new Set<string>();
+
+  const matches = (patterns: RegExp[]) => patterns.some((pattern) => pattern.test(text));
+
+  if (matches([/\banthropic\b/, /\bclaude\b/])) {
+    providers.add("anthropic");
+  }
+  if (matches([/\btelegram\b/, /\bbot\b/])) {
+    providers.add("telegram_bot");
+  }
+  if (matches([/\bwordpress\b/, /\bwp[-_\s]?json\b/])) {
+    providers.add("wordpress");
+  }
+  if (matches([/\bwebflow\b/])) {
+    providers.add("webflow");
+  }
+  if (matches([/\bgsc\b/, /\bsearch console\b/, /\bgoogle search console\b/])) {
+    providers.add("gsc");
+  }
+  if (matches([/\bgmail\b/, /\bsmtp\b/, /\bmailgun\b/, /\bresend\b/])) {
+    providers.add("email_provider");
+  }
+  if (matches([/\bflux\b/, /\bblack forest labs\b/, /\bbfl\b/])) {
+    providers.add("bfl_flux");
+  }
+
+  return [...providers];
+}
+
 export class SkillsRegistryClient {
   private readonly searchArgs: string[];
   private readonly installArgs: string[];
@@ -233,7 +264,8 @@ export class SkillsRegistryClient {
       skill,
       command: [command, ...commandArgs].join(" "),
       stdout: result.stdout,
-      stderr: result.stderr
+      stderr: result.stderr,
+      requiredProviders: deriveRequiredProviders(skill)
     };
   }
 

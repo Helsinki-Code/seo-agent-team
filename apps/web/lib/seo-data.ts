@@ -52,6 +52,17 @@ export type DashboardPayload = {
   content: ContentRow[];
   outreach: OutreachRow[];
   logs: AgentLogRow[];
+  credentialRequests: CredentialRequestRow[];
+};
+
+export type CredentialRequestRow = {
+  id: string;
+  user_id: string;
+  provider: string;
+  requested_by_agent: string;
+  reason: string;
+  status: string;
+  created_at: string;
 };
 
 export type AgentRealtimeStatus = {
@@ -64,6 +75,7 @@ export type AgentRealtimeStatus = {
 
 const SEARCH_STATES = new Set(["searching_for_skill", "installing_skill"]);
 const ACTIVE_STATES = new Set(["executing_task"]);
+const BLOCKED_STATES = new Set(["waiting_for_credentials", "provider_key_missing", "credential_requested"]);
 
 export function deriveAgentStatus(logs: AgentLogRow[]): Record<string, AgentRealtimeStatus> {
   const sorted = [...logs].sort(
@@ -81,6 +93,8 @@ export function deriveAgentStatus(logs: AgentLogRow[]): Record<string, AgentReal
       stateLabel = "Searching Database";
     } else if (ACTIVE_STATES.has(log.state)) {
       stateLabel = log.agent_name.toLowerCase() === "vishnu" ? "Active / Generating Media" : "Active / Executing Task";
+    } else if (BLOCKED_STATES.has(log.state)) {
+      stateLabel = "Waiting For Credentials";
     } else if (log.state === "task_completed") {
       stateLabel = "Idle / Complete";
     }
