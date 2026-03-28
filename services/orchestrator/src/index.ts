@@ -1,3 +1,5 @@
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { readConfig } from "./config.js";
 import { AgentRegistry } from "./openclaw/agent-registry.js";
 import { AnthropicClient } from "./openclaw/anthropic-client.js";
@@ -9,10 +11,12 @@ import { TelegramService } from "./telegram/telegram-service.js";
 import { SkillDiscoverAndInstallTool } from "./tools/skill-discover-install.js";
 import { SkillsRegistryClient } from "./tools/skills-registry.js";
 
+const openclawDir = join(dirname(fileURLToPath(import.meta.url)), "..", "openclaw");
+
 async function main() {
   const config = readConfig();
   const repository = new Repository(config);
-  const registry = new AgentRegistry("services/orchestrator/openclaw");
+  const registry = new AgentRegistry(openclawDir);
   const [agentProfiles, teamManifest] = await Promise.all([
     registry.loadAgents(),
     registry.loadTeamManifest()

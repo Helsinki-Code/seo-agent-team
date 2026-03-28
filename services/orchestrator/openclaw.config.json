@@ -9,8 +9,8 @@
     "table": "agent_logs"
   },
   "team": {
-    "manifestPath": "services/orchestrator/openclaw/team.phase2.json",
-    "agentsPath": "services/orchestrator/openclaw/agents"
+    "manifestPath": "openclaw/team.phase2.json",
+    "agentsPath": "openclaw/agents"
   },
   "autopilot": {
     "routingMode": "sequential_with_cyclic_reentry",

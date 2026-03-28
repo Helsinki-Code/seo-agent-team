@@ -16,10 +16,10 @@ const envSchema = z.object({
   ANTHROPIC_API_BASE_URL: z.string().url().default("https://api.anthropic.com"),
   OPENCLAW_DAEMON_COMMAND: z
     .string()
-    .default("openclaw daemon --config services/orchestrator/openclaw.config.json"),
+    .default("openclaw daemon --config openclaw.config.json"),
   OPENCLAW_DISPATCH_COMMAND: z
     .string()
-    .default("openclaw dispatch --config services/orchestrator/openclaw.config.json"),
+    .default("openclaw dispatch --config openclaw.config.json"),
   OPENCLAW_RUNTIME_DIR: z.string().default("openclaw-runtime"),
   SKILLS_CLI_BIN: z.string().default("npx"),
   SKILLS_SEARCH_SUBCOMMAND: z.string().default("skills find"),
