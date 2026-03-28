@@ -1,0 +1,27 @@
+{
+  "daemon": {
+    "name": "seo-command-center",
+    "maxConcurrentCampaigns": 3,
+    "taskQueuePath": "openclaw-runtime/queue"
+  },
+  "memory": {
+    "provider": "supabase",
+    "table": "agent_logs"
+  },
+  "team": {
+    "manifestPath": "services/orchestrator/openclaw/team.phase2.json",
+    "agentsPath": "services/orchestrator/openclaw/agents"
+  },
+  "autopilot": {
+    "routingMode": "sequential_with_cyclic_reentry",
+    "handoffFormat": "json",
+    "agentLogTable": "agent_logs"
+  },
+  "tools": [
+    {
+      "name": "Skill_Discover_And_Install",
+      "endpoint": "http://localhost:4000/tools/skill-discover-install",
+      "method": "POST"
+    }
+  ]
+}

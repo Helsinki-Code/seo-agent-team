@@ -1,0 +1,54 @@
+{
+  "team_name": "SEO Command Center - Phase 2",
+  "entry_agent": "shiva",
+  "agents": [
+    "shiva",
+    "brahma",
+    "vishnu",
+    "hanuman",
+    "lakshmi",
+    "nandi"
+  ],
+  "collaboration_policy": {
+    "execution_mode": "sequential_with_cyclic_reentry",
+    "handoff_format": "json",
+    "always_log_to_agent_logs": true
+  },
+  "phase2_focus": [
+    "persona definitions",
+    "role directives",
+    "dynamic skills discovery policy"
+  ],
+  "route_map": [
+    {
+      "from": "shiva",
+      "to": "brahma",
+      "reason": "keyword and SERP intelligence"
+    },
+    {
+      "from": "brahma",
+      "to": "vishnu",
+      "reason": "content and media production"
+    },
+    {
+      "from": "vishnu",
+      "to": "hanuman",
+      "reason": "technical QA on live URLs"
+    },
+    {
+      "from": "hanuman",
+      "to": "lakshmi",
+      "reason": "outreach readiness and authority growth"
+    },
+    {
+      "from": "lakshmi",
+      "to": "nandi",
+      "reason": "performance and rank monitoring"
+    },
+    {
+      "from": "nandi",
+      "to": "shiva",
+      "reason": "strategy updates and iterative loop"
+    }
+  ]
+}
